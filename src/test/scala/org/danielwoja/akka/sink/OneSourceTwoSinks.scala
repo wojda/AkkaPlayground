@@ -1,26 +1,17 @@
 package org.danielwoja.akka.sink
 
-import akka.actor.ActorSystem
 import akka.pattern._
+import akka.stream.ClosedShape
 import akka.stream.scaladsl.{Broadcast, GraphDSL, Partition, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape}
-import akka.util.Timeout
-import org.danielwoja.testing.StoreActor
 import org.danielwoja.testing.StoreActor.GetStored
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.{FlatSpec, Matchers}
+import org.danielwoja.testing.{BaseSpec, StoreActor}
 
 import scala.collection._
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 
-class OneSourceTwoSinks extends FlatSpec with ScalaFutures with Matchers with Eventually {
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val mat: ActorMaterializer = ActorMaterializer()
-  implicit val config: PatienceConfig = PatienceConfig(timeout = 5 second)
-  implicit val askTimeout: Timeout = 1 second
+class OneSourceTwoSinks extends BaseSpec {
   import GraphDSL.Implicits._
 
   "Partitioned Sink" should "accepts messages in the same order as was send" in {

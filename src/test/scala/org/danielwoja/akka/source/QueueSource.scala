@@ -1,26 +1,17 @@
 package org.danielwoja.akka.source
 
-import akka.actor.ActorSystem
 import akka.stream.Attributes.InputBuffer
 import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.stream.{ActorMaterializer, Attributes, DelayOverflowStrategy, OverflowStrategy}
-import akka.util.Timeout
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{FlatSpec, Matchers}
+import akka.stream.{Attributes, DelayOverflowStrategy, OverflowStrategy}
+import org.danielwoja.testing.BaseSpec
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 
-class QueueSource extends FlatSpec with Matchers with ScalaFutures {
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val mat: ActorMaterializer = ActorMaterializer()
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val config: PatienceConfig = PatienceConfig(timeout = 5 second)
-  implicit val askTimeout: Timeout = 1 second
+class QueueSource extends BaseSpec {
 
-  "QueueSource" should "allow sending messages from outside of a stream" in {
+  "QueueSource" should "allow sending messages to a stream" in {
     //Given
     val queueSource = Source.queue[Int](1, OverflowStrategy.backpressure)
     val stream = queueSource.toMat(Sink.seq[Int])(Keep.both)

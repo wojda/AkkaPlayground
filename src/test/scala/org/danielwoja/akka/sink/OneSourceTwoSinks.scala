@@ -1,11 +1,12 @@
 package org.danielwoja.akka.sink
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.pattern._
 import akka.stream.scaladsl.{Broadcast, GraphDSL, Partition, RunnableGraph, Sink, Source}
 import akka.stream.{ActorMaterializer, ClosedShape}
 import akka.util.Timeout
-import org.danielwoja.akka.sink.StoreActor.GetStored
+import org.danielwoja.testing.StoreActor
+import org.danielwoja.testing.StoreActor.GetStored
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -24,7 +25,7 @@ class OneSourceTwoSinks extends FlatSpec with ScalaFutures with Matchers with Ev
 
   "Partitioned Sink" should "accepts messages in the same order as was send" in {
     //Given
-    val storeNumbersActor = system.actorOf(Props[StoreActor]())
+    val storeNumbersActor = system.actorOf(StoreActor.props)
 
     val numbersSource = Source(immutable.Seq(1, -1, 2, -2, 3, -3, 4))
     val partitionLogic = Partition[Int](2, n => if (n < 0) 0 else 1)
@@ -99,15 +100,3 @@ class OneSourceTwoSinks extends FlatSpec with ScalaFutures with Matchers with Ev
   }
 }
 
-object StoreActor {
-  case object GetStored
-}
-
-class StoreActor extends Actor {
-  override def receive = store(Seq())
-
-  val store: Seq[Int] => Receive = (v: Seq[Int]) => {
-    case number: Int => context.become(store(v :+ number))
-    case GetStored => sender() ! v
-  }
-}

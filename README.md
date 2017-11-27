@@ -21,7 +21,7 @@
 * [Kafka](https://doc.akka.io/docs/akka-stream-kafka/current/home.html)
 
 ## Materials
-* [Akka Docs](https://doc.akka.io/docs/akka/current/stream/index.html?language=scala)
+* [Akka Stream Docs](https://doc.akka.io/docs/akka/current/stream/index.html?language=scala)
 
 ## Extensions
 * [Paypal Squbs](https://github.com/paypal/squbs)

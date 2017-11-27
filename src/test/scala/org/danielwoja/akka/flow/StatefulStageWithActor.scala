@@ -6,7 +6,7 @@ import akka.pattern.ask
 
 import scala.collection.immutable
 
-class StatefulStage extends BaseSpec {
+class StatefulStageWithActor extends BaseSpec {
 
   "Stateful Stage" should "be implemented by using an actor" in {
     //Given

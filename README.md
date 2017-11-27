@@ -17,6 +17,8 @@
     * ZipWith[A,B,...,Out]
     * Zip[A,B]
     * Concat[A]
+## Integration
+* [Kafka](https://doc.akka.io/docs/akka-stream-kafka/current/home.html)
 
 ## Materials
 * [Akka Docs](https://doc.akka.io/docs/akka/current/stream/index.html?language=scala)

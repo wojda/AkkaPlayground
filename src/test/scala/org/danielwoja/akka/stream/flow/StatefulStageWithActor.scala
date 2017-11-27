@@ -1,4 +1,4 @@
-package org.danielwoja.akka.flow
+package org.danielwoja.akka.stream.flow
 
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import org.danielwoja.testing.{BaseSpec, CountActor}

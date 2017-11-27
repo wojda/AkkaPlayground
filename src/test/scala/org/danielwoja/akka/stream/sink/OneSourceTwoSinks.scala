@@ -1,4 +1,4 @@
-package org.danielwoja.akka.sink
+package org.danielwoja.akka.stream.sink
 
 import akka.pattern._
 import akka.stream.ClosedShape

@@ -1,4 +1,4 @@
-package org.danielwoja.akka.source
+package org.danielwoja.akka.stream.source
 
 import akka.stream.Attributes.InputBuffer
 import akka.stream.scaladsl.{Keep, Sink, Source}

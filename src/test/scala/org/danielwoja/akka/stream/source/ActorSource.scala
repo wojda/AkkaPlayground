@@ -1,4 +1,4 @@
-package org.danielwoja.akka.source
+package org.danielwoja.akka.stream.source
 
 import akka.actor.{ActorRef, Status}
 import akka.stream.OverflowStrategy

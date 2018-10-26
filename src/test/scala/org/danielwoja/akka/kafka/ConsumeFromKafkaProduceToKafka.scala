@@ -3,6 +3,7 @@ package org.danielwoja.akka.kafka
 import akka.kafka._
 import akka.kafka.scaladsl.{Consumer, Producer}
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.danielwoja.testing.BaseSpec
@@ -14,7 +15,7 @@ class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka {
   implicit val kafkaConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(kafkaPort = 12345)
   val consumerSettings: ConsumerSettings[String, String] = ConsumerSettings(system, deserializer, deserializer)
     .withBootstrapServers(s"localhost:${kafkaConfig.kafkaPort}")
-    .withProperty("auto.offset.reset", "earliest")
+    .withProperty(AUTO_OFFSET_RESET_CONFIG, "earliest")
     .withGroupId("stream")
   val producerSettings: ProducerSettings[String, String] = ProducerSettings(system, serializer, serializer)
     .withBootstrapServers(s"localhost:${kafkaConfig.kafkaPort}")

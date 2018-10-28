@@ -21,9 +21,9 @@ class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka with Em
 
 
   implicit val schemaRegistryConfig = SchemaRegistryConfig(8088, s"localhost:${kafkaConfig.zooKeeperPort}")
+  val schemaRegistryEndpoint = s"http://localhost:${schemaRegistryConfig.registryPort}"
 
-  val schemaRegistryEndpoint = "http://localhost:8088"
-  "Akka Reactive Kafka lib" should "allow to consume and prouduce to Kafka" in {
+  "Akka Reactive Kafka lib" should "allow to consume and produce Avro messages to Kafka" in {
     withRunningKafka {
       withEmbeddedSchemaRegistry { () =>
 
@@ -42,15 +42,23 @@ class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka with Em
 
         //When
         Consumer.committableSource[String, User](consumerSettings, Subscriptions.topics("test1"))
-          .map(msg => ProducerMessage.Message(new ProducerRecord[String, FirstName]("test2", FirstName(msg.record.value.firstName)), msg.committableOffset))
+          .map(msg => (msg.committableOffset, msg.record.value()))
+          .map{case (offset, user) => (offset, FirstName(user.firstName))}
+          .map{case (offset, firstName) => firstName.asProducerMessage(offset) }
           .runWith(Producer.commitableSink(producerSettings))
 
         publishToKafka("test1", User("John", "Wick", 1978))
 
         //Then
-        val user = consumeFirstMessageFrom[FirstName]("test2")
-        user.value shouldBe "John"
+        val consumedFirstName = consumeFirstMessageFrom[FirstName]("test2")
+        consumedFirstName.value shouldBe "John"
       }
+    }
+  }
+
+  implicit class FirstNameOps(value: FirstName) {
+    def asProducerMessage[P](passThrough: P): ProducerMessage.Message[String, FirstName, P] = {
+      ProducerMessage.Message(new ProducerRecord[String, FirstName]("test2", value), passThrough)
     }
   }
 
@@ -70,7 +78,9 @@ trait EmbeddedSchemaRegistry {
       put("kafkastore.topic", "_schemas")
     }
     val server = new SchemaRegistryRestApplication(properties).createServer()
+
     server.start()
+
     try {
       f()
     } finally {

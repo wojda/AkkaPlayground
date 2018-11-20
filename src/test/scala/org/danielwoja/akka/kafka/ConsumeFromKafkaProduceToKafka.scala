@@ -1,16 +1,20 @@
 package org.danielwoja.akka.kafka
 
+import java.util
 import java.util.Properties
 
 import akka.kafka._
 import akka.kafka.scaladsl.{Consumer, Producer}
+import akka.serialization.SerializationExtension
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.{Deserializer, Serializer, StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, Deserializer, Serializer, StringDeserializer, StringSerializer}
 import org.danielwoja.testing.BaseSpec
 import com.ovoenergy.kafka.serialization.avro4s._
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication
+import org.apache.kafka.common.errors.SerializationException
 
 class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka with EmbeddedSchemaRegistry {
 
@@ -56,6 +60,42 @@ class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka with Em
     }
   }
 
+  it should "skip non-avro messages" in {
+    withRunningKafka {
+      withEmbeddedSchemaRegistry { () =>
+        implicit val userSerializer: Serializer[User] = uncloseable {
+          avroBinarySchemaIdSerializer(schemaRegistryEndpoint , isKey = false, includesFormatByte = true)
+        }
+        implicit val userDeserializer: Deserializer[User] = avroBinarySchemaIdDeserializer(schemaRegistryEndpoint, isKey = false, includesFormatByte = true)
+        val consumerSettings: ConsumerSettings[String, Array[Byte]] = ConsumerSettings(system, deserializer, new ByteArrayDeserializer())
+          .withBootstrapServers(s"localhost:${kafkaConfig.kafkaPort}")
+          .withProperty(AUTO_OFFSET_RESET_CONFIG, "earliest")
+          .withGroupId("stream")
+        val producerSettings: ProducerSettings[String, User] = ProducerSettings(system, serializer, userSerializer)
+          .withBootstrapServers(s"localhost:${kafkaConfig.kafkaPort}")
+
+        val decider: Supervision.Decider = _ ⇒ Supervision.Resume
+        val mat = ActorMaterializer(ActorMaterializerSettings(system).withSupervisionStrategy(decider))
+
+        Consumer.committableSource[String, Array[Byte]](consumerSettings, Subscriptions.topics("test1"))
+          .map(msg => (msg.committableOffset, userDeserializer.deserialize(msg.record.topic(), msg.record.value())))
+          .map { case (offset, user) => (offset, superImportantBusinessLogic(user))}
+          .map { case (offset, user) => ProducerMessage.Message(new ProducerRecord[String, User]("test2", user), offset)}
+          .runWith(Producer.commitableSink(producerSettings))(mat)
+
+        //When
+        publishStringMessageToKafka("test1", "that's not an avro message")
+        publishToKafka("test1", User("John", "Rambo", 1986))(kafkaConfig, userSerializer)
+
+        //Then
+        val consumedUser = consumeFirstMessageFrom[User]("test2")
+        consumedUser.lastname shouldBe "RAMBO"
+      }
+    }
+  }
+
+  def superImportantBusinessLogic(u: User): User = u.copy(lastname = u.lastname.toUpperCase)
+
   implicit class FirstNameOps(value: FirstName) {
     def asProducerMessage[P](passThrough: P): ProducerMessage.Message[String, FirstName, P] = {
       ProducerMessage.Message(new ProducerRecord[String, FirstName]("test2", value), passThrough)
@@ -64,6 +104,12 @@ class ConsumeFromKafkaProduceToKafka extends BaseSpec with EmbeddedKafka with Em
 
   case class User(firstName: String, lastname: String, yearOfBirth: Int)
   case class FirstName(value: String)
+
+  def uncloseable[T](ser: Serializer[T]): Serializer[T] = new Serializer[T] {
+    override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = ser.configure(configs, isKey)
+    override def serialize(topic: String, data: T): Array[Byte] = ser.serialize(topic, data)
+    override def close(): Unit = ()
+  }
 
 }
 
